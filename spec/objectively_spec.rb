@@ -3,6 +3,17 @@
 require 'pry'
 
 module Objectively
+  Message = Struct.new(:source, :target, :method, :args, keyword_init: true) do
+    def to_s
+      "#{method}(#{args.map(&:inspect).join(', ')})"
+    end
+  end
+  Edge = Struct.new(:source, :target, :calls, keyword_init: true) do
+    def label
+      calls.join("\n")
+    end
+  end
+
   class Diagram
     def self.draw(output:, &block)
       new(&block).draw(output: output)
@@ -13,12 +24,63 @@ module Objectively
     end
 
     def draw(output:)
+      objects = [
+        'Example',
+        'A:1',
+        'B:1'
+      ]
+      messages = [
+        Message.new(
+          source: 'Example',
+          target: 'A:1',
+          method: 'do_it',
+          args: []
+        ),
+        Message.new(
+          source: 'A:1',
+          target: 'B:1',
+          method: 'say',
+          args: ['hello']
+        ),
+        Message.new(
+          source: 'A:1',
+          target: 'B:1',
+          method: 'say',
+          args: ['world']
+        )
+      ]
       GraphViz.new(:G, type: :digraph) do |g|
-        example = g.add_nodes('Example')
-        a = g.add_nodes('A:1')
-        b = g.add_nodes('B:1')
-        g.add_edges(example, a, label: '1. do_it()')
-        g.add_edges(a, b, label: %[2. say("hello")\n3. say("world")])
+        added_nodes = {}
+        objects.each do |object_name|
+          added_nodes[object_name] = g.add_nodes(object_name)
+        end
+        edges = {}
+        messages.each_with_index do |message, index|
+          key = [message.source, message.target].freeze
+          existing_edge = edges[key]
+          message_line = "#{index+1}. #{message}"
+          if existing_edge
+            existing_edge.calls << message_line
+          else
+            edges[key] = Edge.new(
+              source: message.source,
+              target: message.target,
+              calls: [message_line]
+            )
+          end
+        end
+        edges.values.each do |edge|
+          g.add_edges(
+            added_nodes[edge.source],
+            added_nodes[edge.target],
+            label: edge.label
+          )
+        end
+        # example = added_nodes['Example']
+        # a = added_nodes['A:1']
+        # b = added_nodes['B:1']
+        # g.add_edges(example, a, label: '1. do_it()')
+        # g.add_edges(a, b, label: %[2. say("hello")\n3. say("world")])
       end.output(output)
     end
   end

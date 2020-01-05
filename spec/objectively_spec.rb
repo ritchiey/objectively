@@ -25,13 +25,13 @@ module Objectively
 
     def trace(&_block)
       trace = TracePoint.trace(:call) do |tp|
-        # messages <<
-        # Message.new(
-        #   source: tp.binding.of_caller(2).eval('self'),
-        #   target: tp.binding.eval('self'),
-        #   method: tp.callee_id,
-        #   args: ['some_argument']
-        # )
+        messages <<
+        Message.new(
+          source: object_name(tp.binding.of_caller(2).eval('self')),
+          target: object_name(tp.binding.eval('self')),
+          method: tp.callee_id,
+          args: ['some_argument']
+        )
       end
       yield
       self
@@ -62,6 +62,14 @@ module Objectively
 
     private
 
+    def object_name(obj)
+      if obj.respond_to? :__name_in_diagram__
+        obj.__name_in_diagram__
+      else
+        obj.to_s
+      end
+    end
+
     def edges
       @edges ||= begin
                    edges = {}
@@ -84,26 +92,7 @@ module Objectively
     end
 
     def messages
-      @messages ||= [
-        Message.new(
-          source: 'Example',
-          target: 'A:1',
-          method: 'do_it',
-          args: []
-        ),
-        Message.new(
-          source: 'A:1',
-          target: 'B:1',
-          method: 'say',
-          args: ['hello']
-        ),
-        Message.new(
-          source: 'A:1',
-          target: 'B:1',
-          method: 'say',
-          args: ['world']
-        )
-      ]
+      @messages ||= []
     end
 
     def objects
@@ -140,6 +129,10 @@ RSpec.describe Objectively do # ~> NameError: uninitialized constant RSpec
     end
 
     context 'when we trace a short program' do
+      def __name_in_diagram__
+        'Example'
+      end
+
       let(:trace) do
         stub_const 'A', Class.new
         A.class_eval do
@@ -163,6 +156,33 @@ RSpec.describe Objectively do # ~> NameError: uninitialized constant RSpec
           a.do_it
         end
       end
+
+      it 'creates a list of messages' do
+        expect(trace.send(:messages)).to eq(
+          [
+            Objectively::Message.new(
+              source: 'Example',
+              target: 'A:1',
+              method: 'do_it',
+              args: []
+            ),
+            Objectively::Message.new(
+              source: 'A:1',
+              target: 'B:1',
+              method: 'say',
+              args: ['hello']
+            ),
+            Objectively::Message.new(
+              source: 'A:1',
+              target: 'B:1',
+              method: 'say',
+              args: ['world']
+            )
+          ]
+        )
+      end
+
+      it 'creates a list of objects'
 
       describe 'and draw the trace' do
         let(:draw) do

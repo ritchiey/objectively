@@ -2,6 +2,7 @@
 
 require 'pry'
 require 'binding_of_caller'
+require 'graphviz'
 
 module Objectively
   Message = Struct.new(:source, :target, :method, :args, keyword_init: true) do
@@ -30,7 +31,9 @@ module Objectively
           source: object_name(tp.binding.of_caller(2).eval('self')),
           target: object_name(tp.binding.eval('self')),
           method: tp.callee_id.to_s,
-          args: tp.parameters
+          args: tp.parameters.map do |(_, arg_name)|
+          tp.binding.eval(arg_name.to_s)
+        end
         )
       end
       yield
@@ -52,33 +55,32 @@ module Objectively
             label: edge.label
           )
         end
-        # example = added_nodes['Example']
-        # a = added_nodes['A:1']
-        # b = added_nodes['B:1']
-        # g.add_edges(example, a, label: '1. do_it()')
-        # g.add_edges(a, b, label: %[2. say("hello")\n3. say("world")])
       end.output(output)
     end
 
     private
 
     def object_name(obj)
-      if obj.respond_to? :__name_in_diagram__
-        obj.__name_in_diagram__
-      else
-        default_object_name(obj)
-      end
+      object_names[object_key obj] ||= if obj.respond_to? :__name_in_diagram__
+                                         obj.__name_in_diagram__
+                                       else
+                                         default_object_name(obj)
+                                       end
     end
 
     def default_object_name(obj)
       class_name = obj.class.name
-      object_key = "#{class_name}:#{obj.object_id}"
-      object_name = object_names[object_key]
+      object_name = object_names[object_key obj]
       return object_name if object_name
 
       id = (classes[class_name] || 0) + 1
       classes[class_name] = id
-      object_names[object_key] = "#{class_name}:#{id}"
+
+      "#{class_name}:#{id}"
+    end
+
+    def object_key(obj)
+      "#{obj.class.name}:#{obj.object_id}"
     end
 
     def classes
@@ -115,16 +117,12 @@ module Objectively
     end
 
     def objects
-      [
-        'Example',
-        'A:1',
-        'B:1'
-      ]
+      object_names.values
     end
   end
 end
 
-RSpec.describe Objectively do # ~> NameError: uninitialized constant RSpec
+RSpec.describe Objectively do
   it 'has a version number' do
     expect(Objectively::VERSION).not_to be nil
   end
@@ -201,7 +199,9 @@ RSpec.describe Objectively do # ~> NameError: uninitialized constant RSpec
         )
       end
 
-      it 'creates a list of objects'
+      it 'creates a list of objects' do
+        expect(trace.send :objects).to match_array(%w[Example A:1 B:1])
+      end
 
       describe 'and draw the trace' do
         let(:draw) do

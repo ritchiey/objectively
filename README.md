@@ -1,12 +1,16 @@
 # Objectively
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/objectively`. To experiment with that code, run `bin/console` for an interactive prompt.
+Objectively draws a diagram of the messages being  passed between objects
+in some part of your Ruby program.
 
-TODO: Delete this and the text above, and describe your gem
+The purpose is to help you understand at a glance how the objects in your
+program are interacting.
+
+Note: Don't run this in production.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add this line to the development section of your application's Gemfile:
 
 ```ruby
 gem 'objectively'
@@ -22,7 +26,17 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+Objectively.draw(png: 'hello_world.png') do
+  # your code to be traced.
+end
+
+```
+
+Your objects will be named `ClassName:1`, `ClassName:2` etc by default but
+they can specify their own name by responding to `__name_in_diagram__`.
+
+Note that `__name_in_diagram` must return a unique and unchanging name for each class instance.
 
 ## Development
 

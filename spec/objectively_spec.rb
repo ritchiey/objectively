@@ -9,6 +9,7 @@ module Objectively
       "#{method}(#{args.map(&:inspect).join(', ')})"
     end
   end
+
   Edge = Struct.new(:source, :target, :calls, keyword_init: true) do
     def label
       calls.join("\n")
@@ -24,12 +25,13 @@ module Objectively
 
     def trace(&_block)
       trace = TracePoint.trace(:call) do |tp|
-        puts '====='
-        puts(
-          caller: tp.binding.of_caller(2).eval('self'),
-          callee: tp.binding.eval('self')
-        ).pretty_inspect
-        puts '====='
+        # messages <<
+        # Message.new(
+        #   source: tp.binding.of_caller(2).eval('self'),
+        #   target: tp.binding.eval('self'),
+        #   method: tp.callee_id,
+        #   args: ['some_argument']
+        # )
       end
       yield
       self
@@ -82,7 +84,7 @@ module Objectively
     end
 
     def messages
-      [
+      @messages ||= [
         Message.new(
           source: 'Example',
           target: 'A:1',
@@ -114,7 +116,7 @@ module Objectively
   end
 end
 
-RSpec.describe Objectively do
+RSpec.describe Objectively do # ~> NameError: uninitialized constant RSpec
   it 'has a version number' do
     expect(Objectively::VERSION).not_to be nil
   end
@@ -132,8 +134,12 @@ RSpec.describe Objectively do
     end.output(png: 'hello_world.png')
   end
 
-  context 'when we trace a some code' do
-    subject(:draw) do
+  context 'Objectively::Diagram' do
+    let(:diagram) do
+      Objectively::Diagram.new
+    end
+
+    let(:trace) do
       stub_const 'A', Class.new
       A.class_eval do
         def initialize(output)
@@ -152,9 +158,13 @@ RSpec.describe Objectively do
         end
       end
       a = A.new(B.new)
-      Objectively::Diagram.draw(output: { png: 'trace.png' }) do
+      diagram.trace do
         a.do_it
       end
+    end
+
+    let(:draw) do
+      trace.draw(output: { png: 'trace.png' })
     end
 
     before do

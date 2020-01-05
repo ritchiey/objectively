@@ -66,8 +66,27 @@ module Objectively
       if obj.respond_to? :__name_in_diagram__
         obj.__name_in_diagram__
       else
-        obj.to_s
+        default_object_name(obj)
       end
+    end
+
+    def default_object_name(obj)
+      class_name = obj.class.name
+      object_key = "#{class_name}:#{obj.object_id}"
+      object_name = object_names[object_key]
+      return object_name if object_name
+
+      id = (classes[class_name] || 0) + 1
+      classes[class_name] = id
+      object_names[object_key] = "#{class_name}:#{id}"
+    end
+
+    def classes
+      @classes ||= {}
+    end
+
+    def object_names
+      @object_names ||= {}
     end
 
     def edges

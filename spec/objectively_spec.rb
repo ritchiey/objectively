@@ -25,7 +25,10 @@ module Objectively
     def trace(&_block)
       trace = TracePoint.trace(:call) do |tp|
         puts '====='
-        p "#{tp.binding.of_caller(2).eval('self')}#{tp.binding.eval('self')}#{tp.inspect}"
+        puts(
+          caller: tp.binding.of_caller(2).eval('self'),
+          callee: tp.binding.eval('self')
+        ).pretty_inspect
         puts '====='
       end
       yield
@@ -35,12 +38,51 @@ module Objectively
     end
 
     def draw(output:)
-      objects = [
-        'Example',
-        'A:1',
-        'B:1'
-      ]
-      messages = [
+      GraphViz.new(:G, type: :digraph) do |g|
+        added_nodes = {}
+        objects.each do |object_name|
+          added_nodes[object_name] = g.add_nodes(object_name)
+        end
+        edges.values.each do |edge|
+          g.add_edges(
+            added_nodes[edge.source],
+            added_nodes[edge.target],
+            label: edge.label
+          )
+        end
+        # example = added_nodes['Example']
+        # a = added_nodes['A:1']
+        # b = added_nodes['B:1']
+        # g.add_edges(example, a, label: '1. do_it()')
+        # g.add_edges(a, b, label: %[2. say("hello")\n3. say("world")])
+      end.output(output)
+    end
+
+    private
+
+    def edges
+      @edges ||= begin
+                   edges = {}
+                   messages.each_with_index do |message, index|
+                     key = [message.source, message.target].freeze
+                     existing_edge = edges[key]
+                     message_line = "#{index + 1}. #{message}"
+                     if existing_edge
+                       existing_edge.calls << message_line
+                     else
+                       edges[key] = Edge.new(
+                         source: message.source,
+                         target: message.target,
+                         calls: [message_line]
+                       )
+                     end
+                   end
+                   edges
+                 end
+    end
+
+    def messages
+      [
         Message.new(
           source: 'Example',
           target: 'A:1',
@@ -60,39 +102,14 @@ module Objectively
           args: ['world']
         )
       ]
-      GraphViz.new(:G, type: :digraph) do |g|
-        added_nodes = {}
-        objects.each do |object_name|
-          added_nodes[object_name] = g.add_nodes(object_name)
-        end
-        edges = {}
-        messages.each_with_index do |message, index|
-          key = [message.source, message.target].freeze
-          existing_edge = edges[key]
-          message_line = "#{index+1}. #{message}"
-          if existing_edge
-            existing_edge.calls << message_line
-          else
-            edges[key] = Edge.new(
-              source: message.source,
-              target: message.target,
-              calls: [message_line]
-            )
-          end
-        end
-        edges.values.each do |edge|
-          g.add_edges(
-            added_nodes[edge.source],
-            added_nodes[edge.target],
-            label: edge.label
-          )
-        end
-        # example = added_nodes['Example']
-        # a = added_nodes['A:1']
-        # b = added_nodes['B:1']
-        # g.add_edges(example, a, label: '1. do_it()')
-        # g.add_edges(a, b, label: %[2. say("hello")\n3. say("world")])
-      end.output(output)
+    end
+
+    def objects
+      [
+        'Example',
+        'A:1',
+        'B:1'
+      ]
     end
   end
 end

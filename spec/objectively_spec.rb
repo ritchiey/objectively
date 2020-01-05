@@ -29,8 +29,8 @@ module Objectively
         Message.new(
           source: object_name(tp.binding.of_caller(2).eval('self')),
           target: object_name(tp.binding.eval('self')),
-          method: tp.callee_id,
-          args: ['some_argument']
+          method: tp.callee_id.to_s,
+          args: tp.parameters
         )
       end
       yield

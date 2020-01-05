@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'pry'
+require 'binding_of_caller'
 
 module Objectively
   Message = Struct.new(:source, :target, :method, :args, keyword_init: true) do
@@ -16,11 +17,21 @@ module Objectively
 
   class Diagram
     def self.draw(output:, &block)
-      new(&block).draw(output: output)
+      new
+        .trace(&block)
+        .draw(output: output)
     end
 
-    def initialize(&_block)
+    def trace(&_block)
+      trace = TracePoint.trace(:call) do |tp|
+        puts '====='
+        p "#{tp.binding.of_caller(2).eval('self')}#{tp.binding.eval('self')}#{tp.inspect}"
+        puts '====='
+      end
       yield
+      self
+    ensure
+      trace.disable
     end
 
     def draw(output:)

@@ -21,6 +21,9 @@ module Objectively
           tp.binding.eval(arg_name.to_s)
         end
         )
+      rescue StandardError => error
+        puts "Error in tracepoint handler: #{$!}"
+        puts "Backtrace:\n\t#{error.backtrace.join("\n\t")}"
       end
       yield
       self

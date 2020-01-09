@@ -49,7 +49,6 @@ blocks:
         - name: RSpec
           commands:
             - echo "running tests"
-            - bundle fail
 
 promotions:
   - name: "Deploy to Production"

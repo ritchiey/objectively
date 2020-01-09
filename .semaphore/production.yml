@@ -8,9 +8,12 @@ agent:
 
 blocks:
   - name: AWS
+    run:
+      when: "result = 'passed'"
     task:
       secrets:
         - name: aws-production
+
       jobs:
         - name: Deploy
           commands:

@@ -48,7 +48,7 @@ blocks:
       jobs:
         - name: RSpec
           commands:
-            - bundle exec rspec
+            - echo "running tests"
 
 promotions:
   - name: "Deploy to Production"

@@ -1,0 +1,55 @@
+version: v1.0
+name: Objectively test pipeline
+
+auto_cancel:
+  running:
+    when: "branch != 'master'"
+  queued:
+    when: "branch = 'master'"
+
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+global_job_config:
+  prologue:
+    commands:
+      - checkout
+      - sem-version ruby 2.6.3
+
+blocks:
+  - name: Setup
+    dependencies: []
+    task:
+      jobs:
+        - name: Bundle
+          commands:
+            - cache restore gems-$SEMAPHORE_GIT_BRANCH-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master
+            - bundle install --deployment --jobs=4 --retry=3 --path vendor/bundle
+            - cache store gems-$SEMAPHORE_GIT_BRANCH-$(checksum Gemfile.lock) vendor/bundle
+
+  - name: Test
+    execution_time_limit:
+      minutes: 4
+    dependencies:
+      - Setup
+    task:
+      env_vars:
+        - name: RSPEC_RETRY_RETRY_COUNT
+          value: "2"
+        - name: SKIP_COVERAGE_CHECK
+          value: "true"
+      prologue:
+          commands:
+            - cache restore gems-$SEMAPHORE_GIT_BRANCH-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master
+            - bundle install --deployment --without development --jobs=4 --path vendor/bundle
+
+      jobs:
+        - name: RSpec
+          commands:
+            - bundle exec rspec
+
+promotions:
+  - name: "Deploy to Production"
+    pipeline_file: production.yml

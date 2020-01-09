@@ -31,7 +31,7 @@ blocks:
 
   - name: Test
     execution_time_limit:
-      minutes: 4
+      seconds: 20
     dependencies:
       - Setup
     task:

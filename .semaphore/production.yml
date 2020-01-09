@@ -8,6 +8,8 @@ agent:
 
 blocks:
   - name: AWS
+    execution_time_limit:
+      minutes: 1
     run:
       when: "result = 'passed'"
     task:

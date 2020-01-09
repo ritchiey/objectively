@@ -49,7 +49,7 @@ blocks:
         - name: RSpec
           commands:
             - echo "running tests"
-            - fail
+            - false
 
 promotions:
   - name: "Deploy to Production"

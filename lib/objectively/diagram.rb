@@ -11,18 +11,20 @@ module Objectively
 
     def trace(&_block)
       require 'binding_of_caller'
+      cwd = Dir.pwd
       trace = TracePoint.trace(:call) do |tp|
-        messages <<
-        Message.new(
-          source: object_name(tp.binding.of_caller(2).eval('self')),
-          target: object_name(tp.binding.eval('self')),
-          method: tp.callee_id.to_s,
-          args: tp.parameters.map do |(_, arg_name)|
-          tp.binding.eval(arg_name.to_s)
+
+        if tp.path.start_with?(cwd)
+          messages << Message.new(
+            source: object_name(tp.binding.of_caller(2).eval('self')),
+            target: object_name(tp.binding.eval('self')),
+            method: tp.callee_id.to_s,
+            args: tp.parameters.map do |(_, arg_name)|
+              tp.binding.eval(arg_name.to_s)
+            end
+          )
         end
-        )
       rescue StandardError => error
-        puts "Error in tracepoint handler: #{$!}"
         puts "Backtrace:\n\t#{error.backtrace.join("\n\t")}"
       end
       yield

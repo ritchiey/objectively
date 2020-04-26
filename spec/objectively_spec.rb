@@ -45,6 +45,9 @@ RSpec.describe Objectively do
         stub_const 'B', Class.new
         B.class_eval do
           def say(text)
+            # Call a library. RSpec is present so we'll call that.
+            # This should not appear in the diagram.
+            RSpec.describe('ignoring external calls') {}
             puts(text)
           end
         end
